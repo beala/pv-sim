@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solar Panel I-V and P-V Curve Simulator</title>
+</head>
+<body>
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 1rem;">
+<h2 class="sr-only">Interactive solar panel I-V and P-V curves with configurable I<sub>sc</sub>, V<sub>oc</sub>, and fill factor parameters and adjustable load current and load voltage sliders.</h2>
+
+<details style="margin-bottom: 1rem; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 0.5rem 0.75rem;">
+  <summary style="cursor: pointer; font-size: 13px; font-weight: 500; color: var(--color-text-primary);">Panel parameters</summary>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 0.75rem;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <label style="font-size: 12px; color: var(--color-text-secondary); min-width: 65px;">I<sub>sc</sub></label>
+      <input type="number" id="isc-in" value="1.00" step="0.1" min="0.1" max="20" style="width: 70px;" />
+      <span style="font-size: 12px; color: var(--color-text-tertiary);">A</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <label style="font-size: 12px; color: var(--color-text-secondary); min-width: 65px;">V<sub>oc</sub></label>
+      <input type="number" id="voc-in" value="8.0" step="0.1" min="1" max="60" style="width: 70px;" />
+      <span style="font-size: 12px; color: var(--color-text-tertiary);">V</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <label style="font-size: 12px; color: var(--color-text-secondary); min-width: 65px;">Fill factor</label>
+      <input type="number" id="ff-in" value="0.70" step="0.01" min="0.45" max="0.88" style="width: 70px;" />
+      <span style="font-size: 12px; color: var(--color-text-tertiary);"></span>
+    </div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 0.5px solid var(--color-border-tertiary);">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <label style="font-size: 12px; color: var(--color-text-tertiary); min-width: 65px;">I<sub>mpp</sub></label>
+      <span id="impp-display" style="font-size: 12px; color: var(--color-text-secondary); font-weight: 500; min-width: 70px;">0.80 A</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <label style="font-size: 12px; color: var(--color-text-tertiary); min-width: 65px;">V<sub>mpp</sub></label>
+      <span id="vmpp-display" style="font-size: 12px; color: var(--color-text-secondary); font-weight: 500; min-width: 70px;">7.0 V</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <label style="font-size: 12px; color: var(--color-text-tertiary); min-width: 65px;">P<sub>max</sub></label>
+      <span id="pmax-display" style="font-size: 12px; color: var(--color-text-secondary); font-weight: 500; min-width: 70px;">5.6 W</span>
+    </div>
+  </div>
+  <div id="param-warning" style="margin-top: 0.5rem; font-size: 12px; color: var(--color-text-warning); display: none;"></div>
+</details>
+
+<div style="display: flex; gap: 16px; margin-bottom: 1rem; flex-wrap: wrap;">
+  <div style="flex: 1; min-width: 200px; display: flex; align-items: center; gap: 12px;">
+    <label style="font-size: 13px; color: var(--color-text-secondary); min-width: 70px;">Load current I<sub>L</sub></label>
+    <input type="range" min="0.05" max="1.0" step="0.01" value="0.5" id="il-slider" style="flex: 1;" />
+    <span style="font-size: 13px; font-weight: 500; min-width: 48px; text-align: right;" id="il-out">0.50 A</span>
+  </div>
+  <div style="flex: 1; min-width: 200px; display: flex; align-items: center; gap: 12px;">
+    <label style="font-size: 13px; color: var(--color-text-secondary); min-width: 70px;">Load voltage V<sub>L</sub></label>
+    <input type="range" min="0" max="8.5" step="0.1" value="4.0" id="vl-slider" style="flex: 1;" />
+    <span style="font-size: 13px; font-weight: 500; min-width: 48px; text-align: right;" id="vl-out">4.0 V</span>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 1rem;">
+  <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem 1rem;">
+    <div style="font-size: 12px; color: var(--color-text-secondary);">Panel output</div>
+    <div style="font-size: 20px; font-weight: 500;" id="stat-gen">2.0 W</div>
+    <div style="font-size: 11px; color: var(--color-text-tertiary);" id="stat-gen-detail">I<sub>s</sub> × V<sub>s</sub></div>
+  </div>
+  <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem 1rem;">
+    <div style="font-size: 12px; color: var(--color-text-secondary);">Delivered to load</div>
+    <div style="font-size: 20px; font-weight: 500; color: #1D9E75;" id="stat-load">2.0 W</div>
+    <div style="font-size: 11px; color: var(--color-text-tertiary);">I<sub>L</sub> × V<sub>L</sub></div>
+  </div>
+  <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem 1rem;">
+    <div style="font-size: 12px; color: var(--color-text-secondary);">Wasted as heat</div>
+    <div style="font-size: 20px; font-weight: 500; color: #D85A30;" id="stat-waste">0.0 W</div>
+    <div style="font-size: 11px; color: var(--color-text-tertiary);">I<sub>L</sub> × (V<sub>s</sub> − V<sub>L</sub>)</div>
+  </div>
+  <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem 1rem;">
+    <div style="font-size: 12px; color: var(--color-text-secondary);">Efficiency</div>
+    <div style="font-size: 20px; font-weight: 500;" id="stat-eff">100%</div>
+    <div style="font-size: 11px; color: var(--color-text-tertiary);" id="stat-eff-detail">load / output</div>
+  </div>
+  <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem 1rem;">
+    <div style="font-size: 12px; color: var(--color-text-secondary);">MPP utilization</div>
+    <div style="font-size: 20px; font-weight: 500; color: #BA7517;" id="stat-mpp-util">50%</div>
+    <div style="font-size: 11px; color: var(--color-text-tertiary);" id="stat-mpp-detail">output / P<sub>max</sub></div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
+  <div>
+    <div style="font-size: 13px; font-weight: 500; margin-bottom: 0.25rem; color: var(--color-text-secondary);">I–V curve</div>
+    <div style="position: relative; width: 100%; height: 320px;">
+      <canvas id="iv-chart" style="display: block; width: 100% !important; height: 100% !important; max-width: 100%; max-height: 100%;" role="img" aria-label="Solar panel I-V curve with adjustable load current and load voltage lines and power rectangles."></canvas>
+    </div>
+  </div>
+  <div>
+    <div style="font-size: 13px; font-weight: 500; margin-bottom: 0.25rem; color: var(--color-text-secondary);">P–V curve</div>
+    <div style="position: relative; width: 100%; height: 280px;">
+      <canvas id="pv-chart" style="display: block; width: 100% !important; height: 100% !important; max-width: 100%; max-height: 100%;" role="img" aria-label="Solar panel P-V curve showing power versus voltage with operating point and maximum power point marked."></canvas>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 0.75rem; display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--color-text-secondary);">
+  <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 2px; background: #185FA5;"></span>I-V / P-V curve</span>
+  <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 2px; background: rgba(216,90,48,0.25); border: 1px solid #D85A30;"></span>Wasted as heat</span>
+  <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 2px; background: rgba(29,158,117,0.45); border: 1px solid #1D9E75;"></span>Delivered to load</span>
+  <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #BA7517;"></span>MPP</span>
+</div>
+
+<div id="warning" style="margin-top: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--border-radius-md); background: var(--color-background-warning); color: var(--color-text-warning); font-size: 13px; display: none;"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+(function() {
+  function fitModel(Isc, Voc, Vmpp, Impp) {
+    const Iph = Isc;
+    const target = (Isc - Impp) / Isc;
+    function residual(Vt) {
+      return (Math.exp(Vmpp / Vt) - 1) - target * (Math.exp(Voc / Vt) - 1);
+    }
+    let lo = 0.01, hi = Voc * 2;
+    let rLo = residual(lo), rHi = residual(hi);
+    let attempts = 0;
+    while (rLo * rHi > 0 && attempts < 50) { hi *= 2; rHi = residual(hi); attempts++; }
+    if (rLo * rHi > 0) return null;
+    for (let i = 0; i < 100; i++) {
+      const mid = (lo + hi) / 2;
+      const rMid = residual(mid);
+      if (Math.abs(rMid) < 1e-9) { lo = hi = mid; break; }
+      if (rLo * rMid < 0) { hi = mid; rHi = rMid; } else { lo = mid; rLo = rMid; }
+    }
+    const Vt_eff = (lo + hi) / 2;
+    const Io = Isc / (Math.exp(Voc / Vt_eff) - 1);
+    return { Iph, Io, Vt_eff };
+  }
+
+  let panelParams = { Isc: 1.0, Voc: 8.0, FF: 0.70 };
+  // Initial guess for Vmpp: typically around 0.8 * Voc
+  let targetVmpp = 0.8 * panelParams.Voc;
+  let targetImpp = (panelParams.FF * panelParams.Voc * panelParams.Isc) / targetVmpp;
+  let model = fitModel(panelParams.Isc, panelParams.Voc, targetVmpp, targetImpp);
+  let actualMPP = null;
+  let Pmax = 0;
+
+  function ivCurrent(V) {
+    if (V <= 0) return panelParams.Isc;
+    if (V >= panelParams.Voc) return 0;
+    const i = model.Iph - model.Io * (Math.exp(V / model.Vt_eff) - 1);
+    return Math.max(0, i);
+  }
+
+  function vForCurrent(I) {
+    if (I >= panelParams.Isc) return 0;
+    if (I <= 0) return panelParams.Voc;
+    const arg = (model.Iph - I) / model.Io + 1;
+    if (arg <= 0) return 0;
+    return model.Vt_eff * Math.log(arg);
+  }
+
+  function findActualMPP() {
+    // Find the actual maximum power point from the fitted model
+    let maxP = 0;
+    let maxV = 0;
+    let maxI = 0;
+    const N = 500;
+    for (let k = 0; k <= N; k++) {
+      const v = (panelParams.Voc * k) / N;
+      const i = ivCurrent(v);
+      const p = v * i;
+      if (p > maxP) {
+        maxP = p;
+        maxV = v;
+        maxI = i;
+      }
+    }
+    return { V: maxV, I: maxI, P: maxP };
+  }
+
+  function buildIVCurve() {
+    const pts = [];
+    const N = 250;
+    for (let k = 0; k <= N; k++) {
+      const v = (panelParams.Voc * k) / N;
+      pts.push({ x: v, y: ivCurrent(v) });
+    }
+    return pts;
+  }
+
+  function buildPVCurve() {
+    const pts = [];
+    const N = 250;
+    for (let k = 0; k <= N; k++) {
+      const v = (panelParams.Voc * k) / N;
+      pts.push({ x: v, y: v * ivCurrent(v) });
+    }
+    return pts;
+  }
+
+  // I-V chart plugins
+  const ivRectPlugin = {
+    id: 'ivRects',
+    beforeDatasetsDraw(chart) {
+      const { ctx, scales } = chart;
+      const state = chart.$state;
+      if (!state || state.collapsed) return;
+      const { Il, Vl, Vs } = state;
+      const xZero = scales.x.getPixelForValue(0);
+      const yZero = scales.y.getPixelForValue(0);
+
+      const xVs = scales.x.getPixelForValue(Vs);
+      const yIs = scales.y.getPixelForValue(Il);
+      ctx.save();
+      ctx.fillStyle = 'rgba(216, 90, 48, 0.18)';
+      ctx.strokeStyle = 'rgba(216, 90, 48, 0.6)';
+      ctx.lineWidth = 1;
+      ctx.fillRect(xZero, yIs, xVs - xZero, yZero - yIs);
+      ctx.strokeRect(xZero, yIs, xVs - xZero, yZero - yIs);
+      ctx.restore();
+
+      const effectiveVl = Math.min(Vl, Vs);
+      const xVl = scales.x.getPixelForValue(effectiveVl);
+      const yIl = scales.y.getPixelForValue(Il);
+      ctx.save();
+      ctx.fillStyle = 'rgba(29, 158, 117, 0.4)';
+      ctx.strokeStyle = 'rgba(29, 158, 117, 0.9)';
+      ctx.lineWidth = 1;
+      ctx.fillRect(xZero, yIl, xVl - xZero, yZero - yIl);
+      ctx.strokeRect(xZero, yIl, xVl - xZero, yZero - yIl);
+      ctx.restore();
+    }
+  };
+
+  const ivLinesPlugin = {
+    id: 'ivLines',
+    afterDatasetsDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      const state = chart.$state;
+      if (!state) return;
+      const { Il, Vl, Vs, collapsed, Vmpp, Impp } = state;
+
+      const xMpp = scales.x.getPixelForValue(Vmpp);
+      const yMpp = scales.y.getPixelForValue(Impp);
+      ctx.save();
+      ctx.fillStyle = '#BA7517';
+      ctx.beginPath();
+      ctx.arc(xMpp, yMpp, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#854F0B';
+      ctx.font = '500 11px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('MPP', xMpp + 6, yMpp - 6);
+      ctx.restore();
+
+      ctx.save();
+      ctx.strokeStyle = '#D85A30';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      const yIl = scales.y.getPixelForValue(Il);
+      ctx.beginPath();
+      ctx.moveTo(chartArea.left, yIl);
+      ctx.lineTo(chartArea.right, yIl);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#1D9E75';
+      const xVl = scales.x.getPixelForValue(Vl);
+      ctx.beginPath();
+      ctx.moveTo(xVl, chartArea.top);
+      ctx.lineTo(xVl, chartArea.bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#D85A30';
+      ctx.font = '500 12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Load Current = ' + Il.toFixed(2) + ' A', chartArea.left + 4, yIl - 6);
+
+      ctx.fillStyle = '#1D9E75';
+      ctx.fillText('Load Voltage = ' + Vl.toFixed(1) + ' V', xVl + 4, chartArea.top + 14);
+
+      if (!collapsed) {
+        const xVs = scales.x.getPixelForValue(Vs);
+        const yIs = scales.y.getPixelForValue(Il);
+        ctx.fillStyle = '#185FA5';
+        ctx.beginPath();
+        ctx.arc(xVs, yIs, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#185FA5';
+        ctx.font = '500 12px sans-serif';
+        ctx.fillText('(Vs=' + Vs.toFixed(1) + ', Is=' + Il.toFixed(2) + ')', xVs + 8, yIs - 8);
+      }
+      ctx.restore();
+    }
+  };
+
+  // P-V chart plugin
+  const pvAnnotPlugin = {
+    id: 'pvAnnot',
+    afterDatasetsDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      const state = chart.$state;
+      if (!state) return;
+      const { Vs, Vl, Il, collapsed, Vmpp, Impp } = state;
+
+      // MPP marker
+      const xMpp = scales.x.getPixelForValue(Vmpp);
+      const yMpp = scales.y.getPixelForValue(Vmpp * Impp);
+      ctx.save();
+      // Dashed line down to x-axis from MPP
+      ctx.strokeStyle = 'rgba(186, 117, 23, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(xMpp, yMpp);
+      ctx.lineTo(xMpp, scales.y.getPixelForValue(0));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#BA7517';
+      ctx.beginPath();
+      ctx.arc(xMpp, yMpp, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#854F0B';
+      ctx.font = '500 11px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('MPP (' + (Vmpp * Impp).toFixed(1) + ' W)', xMpp + 6, yMpp - 6);
+      ctx.restore();
+
+      if (!collapsed) {
+        // Operating point on P-V curve
+        const Pgen = Il * Vs;
+        const xVs = scales.x.getPixelForValue(Vs);
+        const yPgen = scales.y.getPixelForValue(Pgen);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(24, 95, 165, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(xVs, yPgen);
+        ctx.lineTo(xVs, scales.y.getPixelForValue(0));
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#185FA5';
+        ctx.beginPath();
+        ctx.arc(xVs, yPgen, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#185FA5';
+        ctx.font = '500 12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('Panel: ' + Pgen.toFixed(1) + ' W', xVs + 8, yPgen - 8);
+        ctx.restore();
+
+        // Delivered power level - horizontal line
+        const effectiveVl = Math.min(Vl, Vs);
+        const Pload = Il * effectiveVl;
+        const yPload = scales.y.getPixelForValue(Pload);
+        ctx.save();
+        ctx.strokeStyle = '#1D9E75';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(chartArea.left, yPload);
+        ctx.lineTo(chartArea.right, yPload);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#1D9E75';
+        ctx.font = '500 12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('Load Power = ' + Pload.toFixed(1) + ' W', chartArea.left + 4, yPload - 6);
+        ctx.restore();
+      }
+    }
+  };
+
+  const ivCtx = document.getElementById('iv-chart').getContext('2d');
+  const ivChart = new Chart(ivCtx, {
+    type: 'line',
+    data: {
+      datasets: [{
+        label: 'I-V',
+        data: buildIVCurve(),
+        borderColor: '#185FA5',
+        backgroundColor: 'transparent',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        tension: 0.1,
+        parsing: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      resizeDelay: 200,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: {
+          type: 'linear', min: 0, max: 9,
+          title: { display: true, text: 'Voltage (V)', color: '#888780', font: { size: 12 } },
+          grid: { color: 'rgba(136, 135, 128, 0.12)' },
+          ticks: { color: '#888780', font: { size: 11 } }
+        },
+        y: {
+          type: 'linear', min: 0, max: 1.2,
+          title: { display: true, text: 'Current (A)', color: '#888780', font: { size: 12 } },
+          grid: { color: 'rgba(136, 135, 128, 0.12)' },
+          ticks: { color: '#888780', font: { size: 11 } }
+        }
+      }
+    },
+    plugins: [ivRectPlugin, ivLinesPlugin]
+  });
+
+  const pvCtx = document.getElementById('pv-chart').getContext('2d');
+  const pvChart = new Chart(pvCtx, {
+    type: 'line',
+    data: {
+      datasets: [{
+        label: 'P-V',
+        data: buildPVCurve(),
+        borderColor: '#185FA5',
+        backgroundColor: 'rgba(24, 95, 165, 0.06)',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.1,
+        parsing: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      resizeDelay: 200,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: {
+          type: 'linear', min: 0, max: 9,
+          title: { display: true, text: 'Voltage (V)', color: '#888780', font: { size: 12 } },
+          grid: { color: 'rgba(136, 135, 128, 0.12)' },
+          ticks: { color: '#888780', font: { size: 11 } }
+        },
+        y: {
+          type: 'linear', min: 0, max: 6.5,
+          title: { display: true, text: 'Power (W)', color: '#888780', font: { size: 12 } },
+          grid: { color: 'rgba(136, 135, 128, 0.12)' },
+          ticks: { color: '#888780', font: { size: 11 } }
+        }
+      }
+    },
+    plugins: [pvAnnotPlugin]
+  });
+
+  const ilSlider = document.getElementById('il-slider');
+  const vlSlider = document.getElementById('vl-slider');
+  const ilOut = document.getElementById('il-out');
+  const vlOut = document.getElementById('vl-out');
+  const statGen = document.getElementById('stat-gen');
+  const statGenDetail = document.getElementById('stat-gen-detail');
+  const statLoad = document.getElementById('stat-load');
+  const statWaste = document.getElementById('stat-waste');
+  const statEff = document.getElementById('stat-eff');
+  const statEffDetail = document.getElementById('stat-eff-detail');
+  const statMppUtil = document.getElementById('stat-mpp-util');
+  const warning = document.getElementById('warning');
+  const paramWarning = document.getElementById('param-warning');
+
+  const iscIn = document.getElementById('isc-in');
+  const vocIn = document.getElementById('voc-in');
+  const ffIn = document.getElementById('ff-in');
+  const imppDisplay = document.getElementById('impp-display');
+  const vmppDisplay = document.getElementById('vmpp-display');
+  const pmaxDisplay = document.getElementById('pmax-display');
+
+  function applyParams() {
+    const Isc = parseFloat(iscIn.value);
+    const Voc = parseFloat(vocIn.value);
+    const FF = parseFloat(ffIn.value);
+
+    if (![Isc, Voc, FF].every(v => isFinite(v) && v > 0)) {
+      paramWarning.style.display = 'block';
+      paramWarning.textContent = 'All values must be positive numbers.';
+      return false;
+    }
+    if (FF < 0.45 || FF > 0.88) {
+      paramWarning.style.display = 'block';
+      paramWarning.textContent = 'Fill factor must be between 0.45 and 0.88.';
+      return false;
+    }
+
+    // Estimate Vmpp as approximately 0.8 * Voc (typical for real panels)
+    const targetVmpp = 0.8 * Voc;
+    const targetImpp = (FF * Voc * Isc) / targetVmpp;
+
+    // Validate that calculated Impp is physically possible
+    if (targetImpp >= Isc * 0.98) {
+      paramWarning.style.display = 'block';
+      paramWarning.textContent = 'Fill factor too high for these parameters — would require I<sub>mpp</sub> ≥ I<sub>sc</sub>.';
+      return false;
+    }
+    if (targetVmpp >= Voc * 0.98) {
+      paramWarning.style.display = 'block';
+      paramWarning.textContent = 'Fill factor too high for these parameters — would require V<sub>mpp</sub> ≥ V<sub>oc</sub>.';
+      return false;
+    }
+
+    const fitted = fitModel(Isc, Voc, targetVmpp, targetImpp);
+    if (!fitted) {
+      paramWarning.style.display = 'block';
+      paramWarning.textContent = 'Could not fit diode model to these parameters.';
+      return false;
+    }
+
+    panelParams = { Isc, Voc, FF };
+    model = fitted;
+    actualMPP = findActualMPP();
+
+    if (!actualMPP || actualMPP.P === 0) {
+      paramWarning.style.display = 'block';
+      paramWarning.textContent = 'Could not calculate MPP from fitted model.';
+      return false;
+    }
+
+    Pmax = actualMPP.P;
+
+    // Update displays
+    imppDisplay.textContent = actualMPP.I.toFixed(3) + ' A';
+    vmppDisplay.textContent = actualMPP.V.toFixed(2) + ' V';
+    pmaxDisplay.textContent = actualMPP.P.toFixed(2) + ' W';
+
+    paramWarning.style.display = 'none';
+
+    ilSlider.max = Isc.toFixed(2);
+    vlSlider.max = (Voc * 1.05).toFixed(1);
+    if (parseFloat(ilSlider.value) > Isc) ilSlider.value = (Isc * 0.7).toFixed(2);
+    if (parseFloat(vlSlider.value) > Voc * 1.05) vlSlider.value = actualMPP.V.toFixed(1);
+
+    ivChart.options.scales.x.max = Math.ceil(Voc * 1.1);
+    ivChart.options.scales.y.max = Math.ceil(Isc * 1.15 * 10) / 10;
+    ivChart.data.datasets[0].data = buildIVCurve();
+
+    pvChart.options.scales.x.max = Math.ceil(Voc * 1.1);
+    pvChart.options.scales.y.max = Math.ceil(Pmax * 1.15);
+    pvChart.data.datasets[0].data = buildPVCurve();
+
+    return true;
+  }
+
+  function update() {
+    const Il = parseFloat(ilSlider.value);
+    const Vl = parseFloat(vlSlider.value);
+    let collapsed = false;
+    let warnMsg = '';
+    let Vs;
+
+    if (Il >= panelParams.Isc) {
+      collapsed = true;
+      Vs = 0;
+      warnMsg = 'Load current exceeds I<sub>sc</sub> (' + panelParams.Isc.toFixed(2) + ' A) — panel cannot supply this. Supply collapses.';
+    } else {
+      Vs = vForCurrent(Il);
+    }
+
+    if (!collapsed && Vl > Vs) {
+      collapsed = true;
+      warnMsg = 'Load voltage V<sub>L</sub> = ' + Vl.toFixed(1) + ' V exceeds available V<sub>s</sub> = ' + Vs.toFixed(1) + ' V. Linear regulator cannot boost — supply collapses.';
+    }
+
+    ilOut.textContent = Il.toFixed(2) + ' A';
+    vlOut.textContent = Vl.toFixed(1) + ' V';
+
+    if (collapsed) {
+      statGen.textContent = '— W';
+      statGenDetail.textContent = 'collapsed';
+      statLoad.textContent = '0.0 W';
+      statWaste.textContent = '— W';
+      statEff.textContent = '—';
+      statEffDetail.textContent = 'collapsed';
+      statMppUtil.textContent = '—';
+      warning.style.display = 'block';
+      warning.innerHTML = warnMsg;
+    } else {
+      const Pgen = Il * Vs;
+      const Pload = Il * Vl;
+      const Pwaste = Il * (Vs - Vl);
+      const eff = Pgen > 0 ? (Pload / Pgen) * 100 : 0;
+      const mppUtil = (Pgen / Pmax) * 100;
+
+      statGen.textContent = Pgen.toFixed(1) + ' W';
+      statGenDetail.innerHTML = 'I<sub>s</sub> × V<sub>s</sub> = ' + Il.toFixed(2) + ' × ' + Vs.toFixed(1);
+      statLoad.textContent = Pload.toFixed(1) + ' W';
+      statWaste.textContent = Pwaste.toFixed(1) + ' W';
+      statEff.textContent = Math.round(eff) + '%';
+      statEffDetail.textContent = 'load / output';
+      statMppUtil.textContent = Math.round(mppUtil) + '%';
+      warning.style.display = 'none';
+    }
+
+    if (actualMPP) {
+      const state = { Il, Vl, Vs, collapsed, Vmpp: actualMPP.V, Impp: actualMPP.I };
+      ivChart.$state = state;
+      pvChart.$state = state;
+      ivChart.update('none');
+      pvChart.update('none');
+    }
+  }
+
+  function onParamChange() {
+    if (applyParams()) update();
+  }
+
+  [iscIn, vocIn, ffIn].forEach(el => el.addEventListener('change', onParamChange));
+  ilSlider.addEventListener('input', update);
+  vlSlider.addEventListener('input', update);
+
+  applyParams();
+  update();
+})();
+</script>
+</body>
+</html>
